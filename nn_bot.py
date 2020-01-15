@@ -15,7 +15,7 @@ TRAIN_EPOCHS = 1
 BATCH_SIZE = 64
 WINDOW_SIZE = 100000
 POSITIONS_PER_EPOCH = 10000
-EPSILON = 0.1
+EPSILON = 0.2
 MINIMUM_TRAIN_SIZE = 50000
 
 
@@ -23,14 +23,16 @@ class BotModel(Model):
     def __init__(self):
         super(BotModel, self).__init__()
         self.d1 = Dense(128, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.0001))
+        self.d2 = Dense(256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.0001))
         self.d2 = Dense(128, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.0001))
-        self.d2 = Dense(128, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.0001))
-        self.d3 = Dense(1, activation='sigmoid', kernel_regularizer=tf.keras.regularizers.l2(0.0001))
+        self.d3 = Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.0001))
+        self.d4 = Dense(1, activation='sigmoid', kernel_regularizer=tf.keras.regularizers.l2(0.0001))
 
     def call(self, x, **kwargs):
         x = self.d1(x)
         x = self.d2(x)
-        return self.d3(x)
+        x = self.d3(x)
+        return self.d4(x)
 
 
 def convert_to_input(x):
@@ -57,8 +59,8 @@ class NNBot(Player):
     def get_action(self, game) -> np.ndarray:
         actions = [np.random.uniform(-1, 1, size=2) for _ in range(7)]
         actions.append(game.p[1 - game.turn] - game.p[game.turn])
-        if np.random.uniform(0, 1) <= 0.1:
-            return actions[0]
+        #if np.random.uniform(0, 1) <= 0.1:
+        #    return actions[0]
         states = []
         for action in actions:
             next_game = copy.deepcopy(game)
@@ -156,9 +158,9 @@ def train(train_x, train_y, test_x, test_y, model):
 
 def pick_action(game, bot: NNBot):
     if np.random.uniform(0, 1) <= EPSILON:
-        # if np.random.uniform(0, 1) <= 0.5:
-        return np.random.uniform(-1, 1, size=2)
-        # return game.p[1 - game.turn] - game.p[game.turn]
+        if np.random.uniform(0, 1) <= 0.5:
+            return np.random.uniform(-1, 1, size=2)
+        return game.p[1 - game.turn] - game.p[game.turn]
     return bot.get_action(game)
 
 
