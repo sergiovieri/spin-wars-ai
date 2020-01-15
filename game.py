@@ -15,11 +15,23 @@ class Game:
 
     GAME_DELTA_TIME = 0.01
 
+    @staticmethod
+    def create_p():
+        while True:
+            p = np.array([np.random.uniform(-1, 1, size=2), np.random.uniform(-1, 1, size=2)])
+            d0 = np.linalg.norm(p[0])
+            d1 = np.linalg.norm(p[1])
+            d = np.linalg.norm(p[0] - p[1])
+            if d0 > 0.8 or d1 > 0.8 or d < 0.2 or abs(d0 - d1) > 0.1:
+                continue
+            return p
+
     def __init__(self):
-        self.p = np.array([[-self.PLAYER_RADIUS, np.random.uniform(-0.01, 0.01)],
-                           [self.PLAYER_RADIUS, np.random.uniform(-0.01, 0.01)]])
+        # self.p = np.array([[-self.PLAYER_RADIUS - np.random.uniform(0, 0.01), np.random.uniform(-0.01, 0.01)],
+        #                    [self.PLAYER_RADIUS + np.random.uniform(0, 0.01), np.random.uniform(-0.01, 0.01)]])
+        self.p = Game.create_p()
         self.v = np.array([[0.0, 0.0], [0.0, 0.0]])
-        self.last_action = np.array([[1.0, 0.0], [-1.0, 0.0]])
+        self.last_action = np.array([self.p[1] - self.p[0], self.p[0] - self.p[1]])
         self.turn = 0
         self.state = self.STATE_STARTED
         self.winner = None

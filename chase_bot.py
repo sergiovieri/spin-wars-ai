@@ -48,8 +48,6 @@ class ChaseBot(Player):
             angle = self.get_angle(new_game.p[new_game.turn] - new_game.p[1 - new_game.turn],
                                    -new_game.p[1 - new_game.turn])
 
-            print(angle)
-
             distance = np.linalg.norm(new_game.p[0] - new_game.p[1])
             # if angle < closest[0]:
             if (closest[0] > 0.1 and angle < closest[0]) or (angle < 0.1 and distance < closest[1]):
