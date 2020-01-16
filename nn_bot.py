@@ -9,13 +9,13 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense
 from tensorflow.keras import Model
 
-POSITIONS_PER_ITERATION = 2000
+POSITIONS_PER_ITERATION = 20000
 SAVE_ITERATIONS = 1
 TRAIN_EPOCHS = 1
-BATCH_SIZE = 64
-WINDOW_SIZE = 100000
-POSITIONS_PER_EPOCH = 10000
-EPSILON = 0.2
+BATCH_SIZE = 128
+WINDOW_SIZE = 200000
+POSITIONS_PER_EPOCH = 100000
+EPSILON = 0.1
 MINIMUM_TRAIN_SIZE = 50000
 
 
@@ -129,21 +129,24 @@ def random_flip(x, y):
 
 
 def train(train_x, train_y, test_x, test_y, model):
+    print('Start train')
     train_ds = tf.data.Dataset.from_tensor_slices((train_x, train_y)) \
-        .shuffle(100000) \
+        .shuffle(1000000) \
         .take(POSITIONS_PER_EPOCH) \
+        .map(random_flip, num_parallel_calls=8) \
+        .map(convert_to_input_pair, num_parallel_calls=8) \
+        .batch(BATCH_SIZE) \
+        .prefetch(4)
+
+    test_ds = tf.data.Dataset.from_tensor_slices((test_x, test_y)) \
+        .shuffle(1000000) \
+        .take(POSITIONS_PER_EPOCH // 10) \
         .map(random_flip, num_parallel_calls=8) \
         .map(convert_to_input_pair, num_parallel_calls=8) \
         .batch(BATCH_SIZE)
 
-    test_ds = tf.data.Dataset.from_tensor_slices((test_x, test_y)) \
-        .shuffle(100000) \
-        .take(POSITIONS_PER_EPOCH // 10) \
-        .map(random_flip, num_parallel_calls=8) \
-        .map(convert_to_input_pair, num_parallel_calls=8) \
-        .shuffle(100000).batch(BATCH_SIZE)
-
     for epoch in range(TRAIN_EPOCHS):
+        print('Epoch', epoch)
         train_loss.reset_states()
         train_accuracy.reset_states()
         test_loss.reset_states()
@@ -156,7 +159,7 @@ def train(train_x, train_y, test_x, test_y, model):
             test_step(x, y, model)
 
         template = 'Epoch {}, Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}'
-        print(template.format(epoch + 1,
+        print(template.format(epoch,
                               train_loss.result(),
                               train_accuracy.result() * 100,
                               test_loss.result(),
