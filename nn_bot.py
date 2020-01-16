@@ -38,11 +38,14 @@ class BotModel(Model):
 def convert_to_input(x):
     p = x[0]
     v = x[1]
+    a = x[2]
     return tf.concat(
         [tf.reshape(p, [-1]),
          tf.reshape(tf.square(p), [-1]),
          tf.reshape(v, [-1]),
-         tf.reshape(tf.square(v), [-1])], axis=0)
+         tf.reshape(tf.square(v), [-1]),
+         tf.reshape(a, [-1]),
+         tf.reshape(tf.square(a), [-1])], axis=0)
 
 
 def convert_to_input_pair(x, y):
@@ -55,12 +58,15 @@ class NNBot(Player):
         if model is None:
             model = load_model('model')
         self.model = model
+        self.skip = 0
 
     def get_action(self, game) -> np.ndarray:
+        if self.skip != 0:
+            self.skip -= 1
+            return game.last_action[game.turn]
+        self.skip = 4
         actions = [np.random.uniform(-1, 1, size=2) for _ in range(7)]
         actions.append(game.p[1 - game.turn] - game.p[game.turn])
-        #if np.random.uniform(0, 1) <= 0.1:
-        #    return actions[0]
         states = []
         for action in actions:
             next_game = copy.deepcopy(game)
@@ -68,9 +74,10 @@ class NNBot(Player):
             for _ in range(9):
                 next_game.step(next_game.last_action[next_game.turn])
             if next_game.turn == 0:
-                states.append([next_game.p, next_game.v])
+                states.append([next_game.p, next_game.v, next_game.last_action])
             else:
-                states.append([[next_game.p[1], next_game.p[0]], [next_game.v[1], next_game.v[0]]])
+                states.append([[next_game.p[1], next_game.p[0]], [next_game.v[1], next_game.v[0]],
+                               [next_game.last_action[1], next_game.last_action[0]]])
 
         inputs = tf.convert_to_tensor([convert_to_input(random_flip(s, None)[0]) for s in states])
         predictions = self.model(inputs, training=False)
@@ -111,11 +118,11 @@ def test_step(x, y, model):
 
 def random_flip(x, y):
     if np.random.uniform(0, 1) < 0.5:
-        mult = tf.constant([[[1, -1], [1, -1]], [[1, -1], [1, -1]]], dtype=tf.float64)
+        mult = tf.constant([[[1, -1], [1, -1]], [[1, -1], [1, -1]], [[1, -1], [1, -1]]], dtype=tf.float64)
         x = tf.multiply(x, mult)
 
     if np.random.uniform(0, 1) < 0.5:
-        mult = tf.constant([[[-1, 1], [-1, 1]], [[-1, 1], [-1, 1]]], dtype=tf.float64)
+        mult = tf.constant([[[-1, 1], [-1, 1]], [[-1, 1], [-1, 1]], [[-1, 1], [-1, 1]]], dtype=tf.float64)
         x = tf.multiply(x, mult)
 
     return x, y
@@ -169,8 +176,11 @@ def play_one_game(bot: NNBot):
     game = Game()
 
     while game.state != Game.STATE_FINISHED:
-        history.append((np.copy(game.p), np.copy(game.v), game.turn))
-        game.step(pick_action(game, bot))
+        action = pick_action(game, bot)
+        actions = np.copy(game.last_action)
+        actions[game.turn] = action
+        history.append((np.copy(game.p), np.copy(game.v), actions, game.turn))
+        game.step(action)
 
     x = []
     y = []
@@ -178,10 +188,11 @@ def play_one_game(bot: NNBot):
     if game.winner == 2:
         return [], []
 
-    for p, v, turn in history[-1000:]:
+    for p, v, a, turn in history[-1000:]:
         if turn == 1:
             p = np.array([p[1], p[0]])
             v = np.array([v[1], v[0]])
+            a = np.array([a[1], a[0]])
 
         if game.winner == 2:
             z = 0.5
@@ -190,7 +201,7 @@ def play_one_game(bot: NNBot):
         else:
             z = 0.0
 
-        x.append((p, v))
+        x.append((p, v, a))
         y.append(z)
 
     return x, y
@@ -200,7 +211,7 @@ def load_model(path):
     model = BotModel()
     model.compile(loss=loss_object, optimizer=optimizer)
     game = Game()
-    x, y = convert_to_input_pair([game.p, game.v], 0.0)
+    x, y = convert_to_input_pair([game.p, game.v, game.last_action], 0.0)
     model.train_on_batch(tf.convert_to_tensor([x]), tf.convert_to_tensor([y]))
     try:
         model.load_weights(path)
@@ -232,7 +243,7 @@ def main():
         print('Iteration', iteration)
         added = 0
         while added < POSITIONS_PER_ITERATION:
-            print('added', added)
+            # print('added', added)
             x, y = play_one_game(bot)
             added += len(y)
             train_x.extend(x)
