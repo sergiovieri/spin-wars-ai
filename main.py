@@ -46,9 +46,28 @@ class GameWindow(arcade.Window):
                                          height=self.game.PLAYER_RADIUS * self.SCALE,
                                          color=arcade.color.ANTIQUE_RUBY))
 
+        self.bar_list = arcade.ShapeElementList()
+        self.bar_list.append(
+            arcade.create_rectangle_outline(40, 120, 40, 200, arcade.color.BLACK)
+        )
+        self.bar_list.append(
+            arcade.create_rectangle_outline(self.width - 40, 120, 40, 200, arcade.color.BLACK)
+        )
+
+        self.skip = 0
+
     def translate_point(self, point: np.ndarray):
         # (-1, 1) to (0, MAX)
         return self.SCALE * point + [self.width // 2, self.height // 2]
+
+    def draw_score(self, score, start_x):
+        mid_y = 120
+        if score > 0.5:
+            arcade.draw_line(start_x, mid_y - 1, start_x, mid_y + int(round((score - 0.5) * 200)),
+                             arcade.color.BLUE_SAPPHIRE, 40)
+        elif score < 0.5:
+            arcade.draw_line(start_x, mid_y - int(round((0.5 - score) * 200)), start_x, mid_y + 1,
+                             arcade.color.RED_DEVIL, 40)
 
     def on_draw(self):
         arcade.start_render()
@@ -57,19 +76,17 @@ class GameWindow(arcade.Window):
         self.p_list[1].center_x, self.p_list[1].center_y = self.translate_point(self.game.p[1])
         self.p_list[0].draw()
         self.p_list[1].draw()
-        # arcade.draw_circle_filled(*self.translate_point(np.array([0, 0])), self.game.ARENA_RADIUS * self.SCALE,
-        #                           arcade.color.ORANGE_PEEL)
-        # arcade.draw_circle_filled(*self.translate_point(self.game.p[0]), self.game.PLAYER_RADIUS * self.SCALE,
-        #                           arcade.color.AERO_BLUE)
-        # arcade.draw_circle_filled(*self.translate_point(self.game.p[1]), self.game.PLAYER_RADIUS * self.SCALE,
-        #                           arcade.color.ANTIQUE_RUBY)
         arcade.draw_text('{} - {}'.format(self.scores[0], self.scores[1]), 20, self.height - 20,
-                         arcade.color.BLACK, font_size=36, anchor_y='top', font_name='')
+                         arcade.color.BLACK, font_size=36, anchor_y='top')
+        self.bar_list.draw()
+        self.draw_score(self.players[0].get_score(), 40)
+        self.draw_score(self.players[1].get_score(), self.width - 40)
 
     def on_update(self, delta_time):
-        print(delta_time)
         if self.freeze > 0:
             self.freeze -= delta_time
+            self.players[0].get_action(self.game)
+            self.players[1].get_action(self.game)
             return
 
         self.game.step(self.players[self.game.turn].get_action(self.game))

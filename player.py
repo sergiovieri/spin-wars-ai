@@ -13,3 +13,6 @@ class Player:
 
     def on_key_release(self, symbol: int, modifiers: int):
         pass
+
+    def get_score(self):
+        return 0.5

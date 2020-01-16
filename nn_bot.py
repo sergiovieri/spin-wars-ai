@@ -59,6 +59,7 @@ class NNBot(Player):
             model = load_model('model')
         self.model = model
         self.skip = 0
+        self.last_score = 0.5
 
     def get_action(self, game) -> np.ndarray:
         if self.skip != 0:
@@ -82,7 +83,11 @@ class NNBot(Player):
         inputs = tf.convert_to_tensor([convert_to_input(random_flip(s, None)[0]) for s in states])
         predictions = self.model(inputs, training=False)
         best_id = np.argmax(predictions)
+        self.last_score = predictions[best_id].numpy()[0]
         return actions[best_id]
+
+    def get_score(self):
+        return self.last_score
 
 
 loss_object = tf.keras.losses.binary_crossentropy
