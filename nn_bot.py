@@ -65,7 +65,7 @@ class NNBot(Player):
         if self.skip != 0:
             self.skip -= 1
             return game.last_action[game.turn]
-        self.skip = 4
+        self.skip = 3
         actions = [np.random.uniform(-1, 1, size=2) for _ in range(7)]
         actions.append(game.p[1 - game.turn] - game.p[game.turn])
         states = []
